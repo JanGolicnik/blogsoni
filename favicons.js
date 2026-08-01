@@ -1,130 +1,111 @@
-import UPNG from "upng-js";
+import sizeOf from "buffer-image-size";
+import { Vibrant } from "node-vibrant/node";
 
-// https://stackoverflow.com/questions/17242144/how-to-convert-hsb-hsv-color-to-rgb-accurately
-function HSVtoRGB(h, s, v) {
-  var r, g, b, i, f, p, q, t;
-  i = Math.floor(h * 6);
-  f = h * 6 - i;
-  p = v * (1 - s);
-  q = v * (1 - f * s);
-  t = v * (1 - (1 - f) * s);
-  switch (i % 6) {
-    case 0:
-      ((r = v), (g = t), (b = p));
-      break;
-    case 1:
-      ((r = q), (g = v), (b = p));
-      break;
-    case 2:
-      ((r = p), (g = v), (b = t));
-      break;
-    case 3:
-      ((r = p), (g = q), (b = v));
-      break;
-    case 4:
-      ((r = t), (g = p), (b = v));
-      break;
-    case 5:
-      ((r = v), (g = p), (b = q));
-      break;
-  }
-  return { r: r * 255, g: g * 255, b: b * 255 };
+const FAVICON_SIZE = 64; // must exceed 16 for the globe check to discriminate
+
+// sRGB byte -> linear light. LUT beats pow() per call.
+const _lin = new Float32Array(256);
+for (let i = 0; i < 256; i++) {
+  const c = i / 255;
+  _lin[i] = c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 }
 
-function RGBtoHSV(r, g, b) {
-  var max = Math.max(r, g, b),
-    min = Math.min(r, g, b),
-    d = max - min,
-    h,
-    s = max === 0 ? 0 : d / max,
-    v = max;
-
-  switch (max) {
-    case min:
-      h = 0;
-      break;
-    case r:
-      h = g - b + d * (g < b ? 6 : 0);
-      h /= 6 * d;
-      break;
-    case g:
-      h = b - r + d * 2;
-      h /= 6 * d;
-      break;
-    case b:
-      h = r - g + d * 4;
-      h /= 6 * d;
-      break;
-  }
-
-  return { h, s, v };
+// Perceptual chroma. Hue-uniform, unlike HSV/HSL saturation: a muted brown
+// scores low here even though HSL would call it saturated.
+function oklab_chroma(r, g, b) {
+  const lr = _lin[r], lg = _lin[g], lb = _lin[b];
+  const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
+  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
+  const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
+  const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+  return Math.hypot(A, B);
 }
 
-const fix_color = (c) => {
-  let hsv = RGBtoHSV(c.r, c.g, c.b);
-  const rgb = HSVtoRGB(hsv.h, Math.max(hsv.s, 0.25), Math.max(hsv.v, 0.55));
-  return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
-};
+const C_MIN = 0.02; // below this the icon is effectively greyscale
 
-function get_top_colors(data, w, h) {
-  let buckets = {};
-  for (let i = 0; i < data.length; i += 4) {
-    let r = data[i + 0];
-    let g = data[i + 1];
-    let b = data[i + 2];
-    let a = data[i + 3];
-    if (a < 128) continue;
+// "h s% l%" — drops straight into hsl().
+function RGBtoHSL(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
 
-    let brightness = r * 0.2126 + g * 0.7152 + b * 0.0722;
-    if (brightness < 30) continue;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  const l = (max + min) / 2;
 
-    r = Math.floor(r / 32) * 32;
-    g = Math.floor(g / 32) * 32;
-    b = Math.floor(b / 32) * 32;
-    let key = r + "," + g + "," + b;
-    if (!buckets[key]) buckets[key] = { r, g, b, count: 0 };
-    buckets[key].count++;
+  let h = 0;
+  let s = 0;
+
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    switch (max) {
+      case r: h = ((g - b) / d) % 6; break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+    if (h < 0) h += 360;
   }
 
-  let sorted = Object.values(buckets).sort((a, b) => {
-    return b.count - a.count;
-  });
-  if (sorted.length === 0) return null;
+  return `${h.toFixed(1)} ${(s * 100).toFixed(1)}% ${(l * 100).toFixed(1)}%`;
+}
 
-  const c1 = sorted[0];
-  const c2 = sorted.length > 1 ? sorted[1] : sorted[0];
-  return {
-    color1: fix_color({
-      r: c1.r / 255.0,
-      g: c1.g / 255.0,
-      b: c1.b / 255.0,
-    }),
-    color2: fix_color({
-      r: c2.r / 255.0,
-      g: c2.g / 255.0,
-      b: c2.b / 255.0,
-    }),
-  };
+async function get_top_color(buffer) {
+  const palette = await Vibrant.from(buffer).quality(1).getPalette();
+
+  let best = null;
+  let best_score = -1;
+
+  for (const swatch of Object.values(palette)) {
+    if (!swatch) continue;
+    const [r, g, b] = swatch.rgb;
+
+    // log1p on population keeps area as a tiebreaker without letting a large
+    // flat background dominate; chroma stays linear and drives the decision.
+    const score = oklab_chroma(r, g, b) * Math.log1p(swatch.population);
+
+    if (score > best_score) {
+      best_score = score;
+      best = swatch;
+    }
+  }
+
+  if (!best) return null;
+  if (oklab_chroma(...best.rgb) < C_MIN) return null;
+
+  return best.rgb;
 }
 
 export async function fetch_favicon(url) {
   try {
-    const origin = new URL(url).origin;
-    const domain = `https://www.google.com/s2/favicons?sz=32&domain=${origin}`;
-    const res = await fetch(domain, {
-      headers: { "User-Agent": "blogson/1.0 (jan@nejka.net)" },
-    });
-    const favicon_mime = res.headers.get("Content-Type", "image/png");
-    if (!favicon_mime.startsWith("image/")) return null;
-    const favicon_data = Buffer.from(await res.arrayBuffer());
-    const colors = get_top_colors(
-      new Uint8Array(UPNG.toRGBA8(UPNG.decode(favicon_data))[0]),
+    const hostname = new URL(url).hostname;
+    const res = await fetch(
+      `https://www.google.com/s2/favicons?sz=${FAVICON_SIZE}&domain=${hostname}`,
+      { headers: { "User-Agent": "blogson/1.0 (jan@nejka.net)" } },
     );
+    if (!res.ok) return null;
+
+    const favicon_mime = res.headers.get("content-type") ?? "image/png";
+    if (!favicon_mime.startsWith("image/")) return null;
+
+    const favicon_data = Buffer.from(await res.arrayBuffer());
+    if (favicon_data.length === 0) return null;
+
+    // Google's default globe is always 16x16 regardless of the requested size.
+    // sizeOf throws on unrecognised data, so treat a failure as "not the globe".
+    let dim = null;
+    try {
+      dim = sizeOf(favicon_data);
+    } catch {}
+    if (dim && dim.width <= 16 && dim.height <= 16) return null;
+
+    const rgb = await get_top_color(favicon_data);
+    if (!rgb) return null;
+
     return {
       favicon_mime,
       favicon_data,
-      favicon_color1: colors.color1,
-      favicon_color2: colors.color2,
+      favicon_color1: RGBtoHSL(...rgb),
     };
   } catch (e) {
     console.log(e);
