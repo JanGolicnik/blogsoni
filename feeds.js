@@ -157,7 +157,6 @@ async function poll_feed(id, url, poll_favicon) {
       id,
     );
   }
-  return;
 
   const all_inserted = [];
   for (const item of feed.items) {
@@ -245,7 +244,7 @@ export async function poll_all() {
     .query("SELECT id, url FROM feeds WHERE is_bookmark = 0")
     .all();
 
-  const poll_favicon = true; index++ % 10 === 0;
+  const poll_favicon = index++ % 10 === 0;
   for (let i = 0; i < feeds.length; i += 5) {
     const batch = feeds.slice(i, i + 5);
     all_inserted.push(
