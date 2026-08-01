@@ -5,6 +5,7 @@
     "start": "bun run blogson.js",
     "dev": "bun run --watch blogson.js --watch-path=src --watch-path=public"
   },
+  "workspaces": ["include/gss"],
   "dependencies": {
     "image-size": "^2.0.2",
     "node-vibrant": "^4.0.4",
