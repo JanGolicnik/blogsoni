@@ -2,6 +2,7 @@ import pici from "./include/picijs/pici.js";
 import gss from "./include/gss/gss.js";
 import { db, init_db } from "./db.js";
 import { try_submit, poll_all } from "./feeds.js";
+import { fetch_favicon } from "./favicons.js";
 
 function route_index(req) {
   const id = req.session?.id;
@@ -17,7 +18,7 @@ function route_index(req) {
     ? `
     UNION ALL
     SELECT NULL, f.url, 'New feed: ' || COALESCE(f.title, f.url), f.added_at as date,
-      NULL, NULL, NULL, NULL, NULL,
+      NULL, NULL, NULL, NULL, NULL, NULL,
       0 as is_bookmark, 1 as is_fake,
       0 as favicon_color1, 0 as favicon_color2,
       0 as n_comments,
@@ -31,7 +32,7 @@ function route_index(req) {
   const sql = `
       SELECT * FROM (
         SELECT e.id, e.url, e.title, e.date as date,
-          e.author, e.tags, e.hn_url, e.lobste_url, f.title AS feed_title,
+          e.author, e.tags, e.hn_url, e.lobste_url, f.id AS feed_id, f.title AS feed_title,
           f.is_bookmark, 0 as is_fake,
           f.favicon_color1 as favicon_color1, f.favicon_color2 as favicon_color2,
           (SELECT COUNT(c.id) FROM comments c WHERE c.entry_id = e.id) AS n_comments,
@@ -93,20 +94,23 @@ async function route_submit_post(req) {
 }
 
 function route_favicon(req) {
+  if (!req.params.id) return pici.not_found();
   const row = db
     .query(
-      `SELECT favicon_data, favicon_mime FROM feeds WHERE url LIKE ? AND favicon_data IS NOT NULL LIMIT 1`,
+      `SELECT favicon_data, favicon_mime FROM feeds WHERE id = ? AND favicon_data IS NOT NULL`,
     )
-    .get(`%${req.params.domain}%`);
-  if (row) {
-    return pici.ok({
-      data: row.favicon_data,
-      headers: {
-        "Content-Type": row.favicon_mime ?? "image/png",
-        "Cache-Control": "public, max-age=604800",
-      },
-    });
-  }
+    .get(req.params.id);
+
+  if (!row)
+    return pici.not_found();
+
+  return pici.ok({
+    data: row.favicon_data,
+    headers: {
+      "Content-Type": row.favicon_mime ?? "image/png",
+      "Cache-Control": "public, max-age=604800",
+    },
+  });
 }
 
 function require_login(req) {

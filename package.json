@@ -6,8 +6,9 @@
     "dev": "bun run --watch blogson.js --watch-path=src --watch-path=public"
   },
   "dependencies": {
+    "image-size": "^2.0.2",
+    "node-vibrant": "^4.0.4",
     "rss-parser": "^3.13.0",
-    "upng-js": "^2.1.0",
     "web-push": "^3.6.7"
   }
 }

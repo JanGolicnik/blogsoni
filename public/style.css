@@ -1,24 +1,25 @@
 :root {
-    --bg: #FAF6F5;
-    --fg-dim: #666;
-    --fg-bright: #e8e8e8;
+    --bg: #030303;
+    --text: #e8e8e8;
+    --muted: #666;
     --accent: #ff6600;
     --link: #88aaff;
     --link-hover: #bbddff;
     --link-visited: #551a8b;
+    /*--bg: #FFFFFF;
+    --text: #030303;
+    --muted: #6e7e7e;*/
     --red: #cc4444;
     --red-hover: #D86F6F;
     --green: #43CC4F;
     --green-hover: #6FD878;
-    --border: #222;
-    --tag-bg: #1a1a1a;
-    --input-bg: #111;
-    --btn-bg: #1a1a1a;
-    --font: monospace, monospace;
+    --font: sans-serif;
+    --font-title: monospace;
+    --font-accent: monospace, monospace;
     --font-big: 1.35rem;
     --font-normalbig: 1.15rem;
     --font-normal: 1rem;
-    --font-normalsmall: 0.75rem;
+    --font-normalsmall: 0.85rem;
     --font-small: 0.65rem;
     --main-width: 800px;
 }
@@ -37,7 +38,7 @@ html {
 
 body {
     background: var(--bg);
-    color: var(--fg);
+    color: var(--text);
     font-family: var(--font);
     line-height: 1.25;
     width: 100%;
@@ -48,7 +49,7 @@ body {
     max-width: var(--main-width);
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: .5rem;
 }
 
 svg {
@@ -57,12 +58,7 @@ svg {
     fill: currentColor;
 }
 
-p {
-    color: var(--fg-dim);
-}
-
 main {
-    color: var(--fg);
     font-family: var(--font);
     font-size: 14px;
     line-height: 1.6;
@@ -75,29 +71,37 @@ p.small {
     font-size: var(--font-small);
 }
 
+a {
+    text-decoration: none;
+    color: var(--link);
+}
+
+a:visited {
+    color: var(--link-visited);
+}
+
 h1 {
     font-size: var(--font-big);
-    color: var(--accent);
     letter-spacing: 0.05em;
     text-decoration: none;
-    font-weight: lighter;
+    font-weight: bold;
+    font-family: var(--font-title);
+    color: var(--text)
 }
 
 h2 {
     font-size: var(--font-normalbig);
-    color: var(--accent);
     letter-spacing: 0.05em;
     text-decoration: none;
-    font-weight: lighter;
+    font-weight: normal;
     padding-bottom: 1rem;
 }
 
 h3 {
     font-size: var(--font-normalbig);
-    color: var(--fg-dim);
     letter-spacing: 0.05em;
     text-decoration: none;
-    font-weight: lighter;
+    font-weight: normal;
     padding-top: 1rem;
 }
 
@@ -105,7 +109,6 @@ footer {
     padding: 0.5rem 1rem 0 1rem;
     border-top: 1px solid var(--border);
     font-size: var(--font-small);
-    color: var(--fg-dim);
     margin-top: auto;
 }
 
@@ -123,7 +126,6 @@ header p {
 }
 
 header .subtitle {
-    color: var(--fg-dim);
     font-size: var(--font-small);
 }
 
@@ -147,7 +149,7 @@ header .meta {
 
 .meta {
     font-size: var(--font-normalsmall);
-    color: var(--fg-dim);
+    color: var(--muted);
     height: 100%;
     display: flex;
     justify-content: center;
@@ -163,12 +165,14 @@ aside.options {
 .entry {
     max-width: 100vw;
     padding: 0.5rem;
-    border-bottom: 1px solid var(--border);
-    border-left: 3px solid var(--border);
 }
 
 .entry:hover {
-    background: var(--tag-bg);
+    box-shadow: var(--muted) 0px 0px 1px;
+}
+
+.entry.visited {
+    opacity: .5;
 }
 
 .entry-main {
@@ -179,7 +183,6 @@ aside.options {
 }
 
 .entry .feed-tag {
-    background: var(--tag-bg);
     padding: 0.15rem 0.4rem;
     border: 1px solid var(--border);
 }
@@ -191,7 +194,7 @@ aside.options {
 .tag,
 .author {
     font-size: var(--font-small);
-    color: var(--fg-dim);
+    color: var(--muted);
     white-space: nowrap;
 }
 
@@ -201,12 +204,9 @@ aside.options {
     gap: 0.25rem;
     height: fit-content;
     overflow: scroll;
-    margin-right: 0.5rem;
-    margin-left: 0.5rem;
 }
 
 .tag {
-    background: var(--tag-bg);
     padding: 0.05rem 0.35rem;
     border: 1px solid var(--border);
 }
@@ -237,12 +237,6 @@ button svg {
     display: inline-block;
 }
 
-.entry-tags {
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow-x: auto;
-}
-
 .entry .date,
 .entry .visits,
 .entry .feed-tag {
@@ -251,9 +245,7 @@ button svg {
 
 input {
     flex: 1;
-    background: var(--input-bg);
     border: 1px solid var(--border);
-    color: var(--fg-bright);
     padding: 0.5rem 0.75rem;
     font-size: var(--font-small);
     outline: none;
@@ -264,21 +256,20 @@ input:focus {
 }
 
 input::placeholder {
-    color: var(--fg-dim);
+    color: var(--muted);
 }
 
 .checkbox-label {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    color: var(--fg-dim);
+    color: var(--muted);
     font-size: var(--font-small);
     white-space: nowrap;
     cursor: pointer;
 }
 
 input[type="checkbox"] {
-    accent-color: var(--accent);
     cursor: pointer;
 }
 
@@ -303,23 +294,18 @@ input[type="checkbox"] {
     margin-left: auto;
 }
 
-.feed-item:hover {
-    background: var(--input-bg);
-}
-
 .feed-title {
-    color: var(--fg-bright);
     font-size: var(--font-normal);
 }
 
 .feed-url {
-    color: var(--fg-dim);
+    color: var(--muted);
     font-size: var(--font-small);
     word-break: break-all;
 }
 
 .feed-count {
-    color: var(--fg-dim);
+    color: var(--muted);
     font-size: var(--font-small);
     white-space: nowrap;
 }
@@ -331,7 +317,7 @@ input[type="checkbox"] {
 }
 
 .empty {
-    color: var(--fg-dim);
+    color: var(--muted);
     padding: 2rem 0;
     font-style: italic;
     text-align: center;
@@ -356,29 +342,20 @@ form.inline button {
 
 a.btn,
 button.btn {
+    color: var(--text);
     width: fit-content;
-    border-bottom: 1px solid var(--border);
     white-space: nowrap;
-}
-
-a,
-a:visited,
-a.visited {
-    color: var(--fg-dim);
-    text-decoration: none;
 }
 
 a:hover,
 a:hover svg,
 form.inline button:hover,
 form.inline button:hover svg {
-    color: var(--link-hover);
-    fill: var(--link-hover);
     text-decoration: underline;
 }
 
 .btn {
-    color: var(--fg-dim);
+    color: var(--muted);
     background: none;
     text-decoration: none;
     padding: 0.2rem 0.5rem;
@@ -387,8 +364,8 @@ form.inline button:hover svg {
 
 .btn:hover,
 .btn.active {
-    color: var(--accent);
-    border-color: var(--accent);
+    color: var(--text);
+    text-decoration: underline solid;
 }
 
 .btn-danger {
@@ -421,15 +398,6 @@ button.visited.like:hover, button.visited.like:hover svg {
     overflow: hidden;
 }
 
-a.regular {
-    color: var(--link);
-}
-
-a.regular:visited,
-a.regular.visited {
-    color: var(--link-visited);
-}
-
 .tree,
 .tree ul {
     list-style: none;
@@ -441,7 +409,7 @@ a.regular.visited {
 
 .tree li {
     padding-left: 0.75rem;
-    border-left: 1px solid var(--fg-dim);
+    border-left: 1px solid var(--muted);
     position: relative;
 }
 .tree li::before {
@@ -452,7 +420,7 @@ a.regular.visited {
     left: -1px;
     height: 100%;
     width: 0.5rem;
-    border-top: 1px solid var(--fg-dim);
+    border-top: 1px solid var(--muted);
     margin-top: -1px;
     border-radius: 1px 0 0 0;
 }
@@ -468,7 +436,6 @@ a.regular.visited {
 form,
 button {
     background-color: unset;
-    color: var(--fg-dim);
     text-align: center;
 }
 
@@ -504,4 +471,8 @@ body#extension button {
 
 body#extension h1 {
     padding-bottom: 1rem;
+}
+
+.muted {
+    color: var(--muted);
 }

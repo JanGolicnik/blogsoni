@@ -1,8 +1,18 @@
 <article
-    class="entry"
+    class="entry {{ p.visited ? "visited" : "" }}"
     data-feed="{{ p.feed_title || p.feed_url }}"
     data-domain="{{ p.url.split('/')[2] }}"
-    style="border-image: linear-gradient(to bottom, {{p.favicon_color1}}, {{p.favicon_color2}}) 1"
+    style="
+    <script &>
+    if (!p.favicon_color1) return '';
+    const [h,s,v] = p.favicon_color1.split(' ');
+    if (s < 2) return '';
+    return `
+        border-left: 4px solid hsl(${h} ${s} ${v});
+        background-color: oklch(72% 0.14 ${h} / 14%);
+    `;
+    </script>
+    "
 >
     <div class="entry-main">
         <div class="entry-title">
@@ -10,12 +20,11 @@
                 href="{{ p.is_fake ? new URL(p.url).origin : `/go/?entry_id=${ p.id }` }}"
                 target="_blank"
                 rel="noopener"
-                class="regular {{ p.visited ? "visited" : "" }}"
             >
                 {{{ !p.is_fake ? `<img
                     class="favicon"
-                    src="/favicon/?domain=${ p.url.split('/')[2] }"
-                    alt="favicon"
+                    src="/favicon/?id=${ p.feed_id }"
+                    alt=""
                     loading="lazy"
                 />` : '' }}}
                 {{ p.is_bookmark ? "Site showcase: " : "" }} {{ (p.title &&
@@ -23,33 +32,19 @@
             </a>
         </div>
         <script &&>
-            let out = "";
-            if (p.tags && !p.is_bookmark) {
-                const tag_list = p.tags.split(", ");
-                out += '<div class="entry-tags">';
-                tag_list
-                    .slice(0, 4)
-                    .forEach(
-                        (tag) => (out += `<span class="tag">${tag}</span>`),
-                    );
-                if (tag_list.length > 4)
-                    out += `<span class="tag tag-more">+${tag_list.length - 4}</span>`;
-                out += "</div>";
-            }
-            return out;
-        </script>
-        <script &&>
             return p.date
-                ? `<span class="date">${p.date.slice(0, 10)}</span>`
+                ? `<span class="date">${time_between(p.date)}</span>`
                 : "";
         </script>
     </div>
-    <div class="entry-info">
-        {{{ !p.is_fake ? `<span class="feed-tag" style="color: ${p.favicon_color1}">
+
+    <div class="entry-info muted">
+        {{{ !p.is_fake ? `<span class="feed-tag" style="color: oklch(70% 0.3 ${p.favicon_color1?.split(' ')[0] ?? '0'})">
             ${ p.is_bookmark ? "site" : escape((p.feed_title || p.feed_url ||
             '').slice(0, 20)) } </span
-        >` : '' }}} {{{ p.author ? `<span class="author">by ${p.author}</span>`
-        : "" }}}
+        >` : '' }}}
+
+        <!--{{{ p.author ? `<span class="author">by ${p.author}</span>` : "" }}}-->
 
         {{{ p.hn_url ? `<a
             href="${p.hn_url}"
@@ -74,23 +69,48 @@
         >` : "" }}}
 
         <script &&>
-        return !p.is_fake ? `
-        <p class="margin-left">${p.n_visits ? p.n_visits : ''}
-            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5ZM480-500Zm207.5 160.5Q782-399 832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280q113 0 207.5-59.5Z"/></svg>
-        </p>
-        <form class="inline" method="post" action="/rate/?id=${p.id}&rating=dislike">
-          <button type="submit" class="dislike ${p.rating === "dislike" ? 'visited' : ''}">
-            ${p.n_dislikes ? p.n_dislikes : ''}
-            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M240-840h440v520L400-40l-50-50q-7-7-11.5-19t-4.5-23v-14l44-174H120q-32 0-56-24t-24-56v-80q0-7 2-15t4-15l120-282q9-20 30-34t44-14Zm360 80H240L120-480v80h360l-54 220 174-174v-406Zm0 406v-406 406Zm80 34v-80h120v-360H680v-80h200v520H680Z"/></svg>
-          </button>
-        </form>
-        <form class="inline" method="post" action="/rate/?id=${p.id}&rating=like">
-          <button type="submit" class="like ${p.rating === "like" ? 'visited' : ''}">
-            ${p.n_likes ? p.n_likes : ''}
-            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M720-120H280v-520l280-280 50 50q7 7 11.5 19t4.5 23v14l-44 174h258q32 0 56 24t24 56v80q0 7-2 15t-4 15L794-168q-9 20-30 34t-44 14Zm-360-80h360l120-280v-80H480l54-220-174 174v406Zm0-406v406-406Zm-80-34v80H160v360h120v80H80v-520h200Z"/></svg>
-          </button>
-        </form>
-        ` : ''
+            let out = "";
+            if (p.tags && !p.is_bookmark) {
+                const tag_list = p.tags.split(", ");
+                out += '<div class="entry-tags">';
+                tag_list
+                    .slice(0, 3)
+                    .forEach(
+                        (tag) => (out += `<span class="tag">${tag}</span>`),
+                    );
+                out += "</div>";
+            }
+            return out;
         </script>
+
+        <div class="margin-left">
+        </div>
+        {{{
+            !p.is_fake && p.n_visits ? `
+                <p class="margin-left">${p.n_visits}
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5ZM480-500Zm207.5 160.5Q782-399 832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280q113 0 207.5-59.5Z"/></svg>
+                </p>
+            ` : ''
+        }}}
+        <!--{{{
+            !p.is_fake ? `
+                <form class="inline" method="post" action="/rate/?id=${p.id}&rating=dislike">
+                  <button type="submit" class="dislike ${p.rating === "dislike" ? 'visited' : ''}">
+                    ${p.n_dislikes ? p.n_dislikes : ''}
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M240-840h440v520L400-40l-50-50q-7-7-11.5-19t-4.5-23v-14l44-174H120q-32 0-56-24t-24-56v-80q0-7 2-15t4-15l120-282q9-20 30-34t44-14Zm360 80H240L120-480v80h360l-54 220 174-174v-406Zm0 406v-406 406Zm80 34v-80h120v-360H680v-80h200v520H680Z"/></svg>
+                  </button>
+                </form>
+            ` : ''
+        }}}-->
+        {{{
+            !p.is_fake && (p.n_likes || p.visited) ?
+                `<form class="inline" method="post" action="/rate/?id=${p.id}&rating=like">
+                    <button type="submit" class="muted like ${p.rating === "like" ? 'visited' : ''}">
+                    ${p.n_likes ? p.n_likes : ''}
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M480-528 296-344l-56-56 240-240 240 240-56 56-184-184Z"/></svg>
+                    </button>
+                </form>
+            ` : ''
+        }}}
     </div>
 </article>
