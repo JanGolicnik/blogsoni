@@ -1,4 +1,4 @@
-import sizeOf from "buffer-image-size";
+import { imageSize } from "image-size";
 import { Vibrant } from "node-vibrant/node";
 
 const FAVICON_SIZE = 64; // must exceed 16 for the globe check to discriminate
@@ -95,7 +95,7 @@ export async function fetch_favicon(url) {
     // sizeOf throws on unrecognised data, so treat a failure as "not the globe".
     let dim = null;
     try {
-      dim = sizeOf(favicon_data);
+      dim = imageSize(favicon_data);
     } catch {}
     if (dim && dim.width <= 16 && dim.height <= 16) return null;
 
