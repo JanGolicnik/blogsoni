@@ -234,7 +234,7 @@ async function sendNotification(data) {
     });
 }
 
-let index = 1;
+let index = 0;
 export async function poll_all() {
   const start = Date.now();
 

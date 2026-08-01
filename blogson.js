@@ -487,6 +487,6 @@ const server = pici.create({
 init_db(process.env.DATABASE ?? "links.db");
 
 setInterval(poll_all, 3 * 60 * 60 * 1000);
-// poll_all();
+poll_all();
 
 server.start(5001);
