@@ -1,17 +1,14 @@
 import { imageSize } from "image-size";
 import { Vibrant } from "node-vibrant/node";
 
-const FAVICON_SIZE = 64; // must exceed 16 for the globe check to discriminate
+const FAVICON_SIZE = 64;
 
-// sRGB byte -> linear light. LUT beats pow() per call.
 const _lin = new Float32Array(256);
 for (let i = 0; i < 256; i++) {
   const c = i / 255;
   _lin[i] = c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 }
 
-// Perceptual chroma. Hue-uniform, unlike HSV/HSL saturation: a muted brown
-// scores low here even though HSL would call it saturated.
 function oklab_chroma(r, g, b) {
   const lr = _lin[r], lg = _lin[g], lb = _lin[b];
   const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
@@ -22,9 +19,8 @@ function oklab_chroma(r, g, b) {
   return Math.hypot(A, B);
 }
 
-const C_MIN = 0.02; // below this the icon is effectively greyscale
+const C_MIN = 0.02;
 
-// "h s% l%" — drops straight into hsl().
 function RGBtoHSL(r, g, b) {
   r /= 255; g /= 255; b /= 255;
 
@@ -60,8 +56,6 @@ async function get_top_color(buffer) {
     if (!swatch) continue;
     const [r, g, b] = swatch.rgb;
 
-    // log1p on population keeps area as a tiebreaker without letting a large
-    // flat background dominate; chroma stays linear and drives the decision.
     const score = oklab_chroma(r, g, b) * Math.log1p(swatch.population);
 
     if (score > best_score) {
@@ -91,21 +85,18 @@ export async function fetch_favicon(url) {
     const favicon_data = Buffer.from(await res.arrayBuffer());
     if (favicon_data.length === 0) return null;
 
-    // Google's default globe is always 16x16 regardless of the requested size.
-    // sizeOf throws on unrecognised data, so treat a failure as "not the globe".
-    let dim = null;
-    try {
-      dim = imageSize(favicon_data);
-    } catch {}
-    if (dim && dim.width <= 16 && dim.height <= 16) return null;
+    // let dim = null;
+    // try {
+    //   dim = imageSize(favicon_data);
+    // } catch {}
+    // if (dim && dim.width <= 16 && dim.height <= 16) return null;
 
     const rgb = await get_top_color(favicon_data);
-    if (!rgb) return null;
 
     return {
       favicon_mime,
       favicon_data,
-      favicon_color1: RGBtoHSL(...rgb),
+      favicon_color1: rgb ? RGBtoHSL(...rgb) : '0 0 0',
     };
   } catch (e) {
     console.log(e);

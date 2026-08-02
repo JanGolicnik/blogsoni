@@ -2,26 +2,22 @@
     --bg: #030303;
     --text: #e8e8e8;
     --muted: #666;
-    --accent: #ff6600;
     --link: #88aaff;
     --link-hover: #bbddff;
     --link-visited: #551a8b;
-    /*--bg: #FFFFFF;
-    --text: #030303;
-    --muted: #6e7e7e;*/
     --red: #cc4444;
     --red-hover: #D86F6F;
     --green: #43CC4F;
     --green-hover: #6FD878;
     --font: sans-serif;
-    --font-title: monospace;
+    --font-title: serif;
     --font-accent: monospace, monospace;
     --font-big: 1.35rem;
     --font-normalbig: 1.15rem;
     --font-normal: 1rem;
     --font-normalsmall: 0.85rem;
     --font-small: 0.65rem;
-    --main-width: 800px;
+    --main-width: 900px;
 }
 
 * {
@@ -248,15 +244,17 @@ button svg {
 input {
     flex: 1;
     border: 1px solid var(--border);
-    padding: 0.5rem 0.75rem;
+    padding: 0.25rem 0.75rem;
     font-size: var(--font-small);
     outline: none;
     background-color: var(--bg);
     color: var(--text);
+    border: 1px solid var(--muted);
+    border-radius: 0;
 }
 
 input:focus {
-    border-color: var(--accent);
+    border-color: var(--text);
 }
 
 input::placeholder {
