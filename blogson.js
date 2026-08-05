@@ -1,7 +1,7 @@
 import pici from "./include/picijs/pici.js";
 import gss from "./include/gss/gss.js";
 import { db, init_db } from "./db.js";
-import { try_submit, poll_all } from "./feeds.js";
+import { try_submit, poll_all, validate_feed } from "./feeds.js";
 import { fetch_favicon } from "./favicons.js";
 
 function route_index(req) {
@@ -487,6 +487,6 @@ const server = pici.create({
 init_db(process.env.DATABASE ?? "links.db");
 
 setInterval(poll_all, 3 * 60 * 60 * 1000);
-poll_all();
+// poll_all();
 
 server.start(5001);

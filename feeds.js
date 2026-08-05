@@ -10,7 +10,7 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY,
 );
 
-const COMMON_FEED_PATHS = [
+const RSS_PATHS = [
   "/feed",
   "/feed/",
   "/rss",
@@ -20,15 +20,24 @@ const COMMON_FEED_PATHS = [
   "/atom.xml",
   "/index.xml",
   "/feeds/posts/default",
-  "/?feed=rss2",
+  "/links/rss.xml",
+  "/feeds/all.atom.xml",
+  "/posits/index.xml",
+  "/home",
+  "/blog/rss.xml",
+  "/blog/feed.xml",
+  "/posits/index.html",
+  "/rss/blogs.xml",
 ];
 
-const link_re =
-  /<link\b[^>]*?(?:rel=["']alternate["'][^>]*?type=["']application\/(?:rss|atom)\+xml["']|type=["']application\/(?:rss|atom)\+xml["'][^>]*?rel=["']alternate["'])[^>]*?href=["']([^"']+)["']/gi;
-const simple_re =
-  /<link\b[^>]*?type=["']application\/(?:rss|atom)\+xml["'][^>]*?href=["']([^"']+)["']/gi;
-const href_first_re =
-  /<link\b[^>]*?href=["']([^"']+)["'][^>]*?type=["']application\/(?:rss|atom)\+xml["']/gi;
+const FEED_TYPES = {
+  "application/atom+xml": true,
+  "application/rss+xml": true,
+  "application/feed+json": true,
+  "application/rdf+xml": true,
+  "application/xml": true,
+  "text/xml": true,
+};
 
 async function fetch_url(url, last_modified) {
   try {
@@ -55,22 +64,30 @@ async function parseFeed(content) {
 }
 
 async function discover_feed(url, content) {
-  const html = Buffer.from(content).toString("utf8");
   if (await parseFeed(content)) return { resolved: url };
 
-  for (const re of [link_re, simple_re, href_first_re]) {
-    re.lastIndex = 0;
-    const m = re.exec(html);
-    if (!m) continue;
-    const { error, content, resolved } = await fetch_url(
-      new URL(m[1], url).href,
-    );
+  const urls = [];
+  new HTMLRewriter().on("link[href]", {
+    element(el) {
+        const type = el.getAttribute("type");
+        if (type && !(type.toLowerCase().trim() in FEED_TYPES)) return;
+        const rel = el.getAttribute("rel");
+        if (rel && !rel.toLowerCase().includes("alternate")) return;
+        try {
+          urls.push(new URL(el.getAttribute("href"), url).href);
+        } catch { }
+      }
+    })
+    .transform(Buffer.from(content).toString("utf8"));
+
+  for (const url of urls) {
+    const { error, content, resolved } = await fetch_url(url);
     if (error) continue;
     if (await parseFeed(content)) return { resolved };
   }
 
   const root = new URL(url).origin;
-  for (const path of COMMON_FEED_PATHS) {
+  for (const path of RSS_PATHS) {
     const { error, content, resolved } = await fetch_url(root + path);
     if (error) continue;
     if (await parseFeed(content)) return { resolved };
@@ -79,7 +96,7 @@ async function discover_feed(url, content) {
   return { error: "No feed found" };
 }
 
-async function validate_feed(url, skip_parse) {
+export async function validate_feed(url, skip_parse) {
   if (!url) return { error: "Url is required" };
   if (!url.startsWith("http://") && !url.startsWith("https://"))
     return { error: "URL must start with http:// or https://" };
