@@ -30,15 +30,17 @@ const simple_re =
 const href_first_re =
   /<link\b[^>]*?href=["']([^"']+)["'][^>]*?type=["']application\/(?:rss|atom)\+xml["']/gi;
 
-async function fetch_url(url) {
+async function fetch_url(url, last_modified) {
   try {
+    const headers = { "User-Agent": "blogson/1.0 (jan@nejka.net)" };
+    if (last_modified) headers["If-Modified-Since"] = last_modified;
     const res = await fetch(url, {
-      headers: { "User-Agent": "blogson/1.0 (jan@nejka.net)" },
+      headers,
       signal: AbortSignal.timeout(3000),
       redirect: "follow",
     });
     if (!res.ok) return { error: `Server returned ${res.status}` };
-    return { content: await res.arrayBuffer(), resolved: res.url };
+    return { content: await res.arrayBuffer(), resolved: res.url, last_modified: res.headers.get('last-modified') };
   } catch (e) {
     return { error: `Fetch failed (${e.message})` };
   }
@@ -128,8 +130,8 @@ async function find_url_on_lobste(url) {
   }
 }
 
-async function poll_feed(id, url, poll_favicon) {
-  const { error, content, resolved } = await fetch_url(url);
+async function poll_feed(id, url, prev_last_modified, poll_favicon) {
+  const { error, content, resolved, last_modified } = await fetch_url(url, prev_last_modified);
   if (error) return { error };
   url = resolved;
   const feed = await parseFeed(content);
@@ -138,6 +140,7 @@ async function poll_feed(id, url, poll_favicon) {
   let updates = {};
   if (feed.title) updates.title = feed.title;
   if (feed.description) updates.description = feed.description;
+  if (last_modified) updates.last_modified = last_modified;
 
   if (poll_favicon) {
     const favicon = await fetch_favicon(url) ?? {
@@ -149,9 +152,7 @@ async function poll_feed(id, url, poll_favicon) {
   }
 
   if (Object.keys(updates).length > 0) {
-    const set = Object.keys(updates)
-      .map((k) => `${k} = ?`)
-      .join(", ");
+    const set = Object.keys(updates).map((k) => `${k} = ?`).join(", ");
     db.query(`UPDATE feeds SET ${set} WHERE id = ?`).run(
       ...Object.values(updates),
       id,
@@ -241,22 +242,16 @@ export async function poll_all() {
   const all_inserted = [];
 
   const feeds = db
-    .query("SELECT id, url FROM feeds WHERE is_bookmark = 0")
+    .query("SELECT id, url, last_modified FROM feeds WHERE is_bookmark = 0")
     .all();
 
   const poll_favicon = index++ % 10 === 0;
-  for (let i = 0; i < feeds.length; i += 5) {
-    const batch = feeds.slice(i, i + 5);
-    all_inserted.push(
-      ...(
-        await Promise.all(
-          batch.map((feed) => poll_feed(feed.id, feed.url, poll_favicon)),
-        )
+  all_inserted.push(
+    ...(await Promise.all(
+        feeds.map((feed) => poll_feed(feed.id, feed.url, feed.last_fetch_at, poll_favicon)),
       )
-        .filter(Array.isArray)
-        .flat(),
-    );
-  }
+    ).filter(Array.isArray).flat(),
+  );
 
   const interval = process.env.POLL_INTERVAL / all_inserted.length;
   all_inserted.forEach((entry, i) => {

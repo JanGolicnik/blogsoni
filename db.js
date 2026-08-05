@@ -121,5 +121,9 @@ export function init_db(path) {
     db.query("ALTER TABLE feeds ADD COLUMN favicon_color1 TEXT").run();
     db.query("ALTER TABLE feeds ADD COLUMN favicon_color2 TEXT").run();
   }
+  if (user_version <= 6) {
+    user_version++;
+    db.query("ALTER TABLE feeds ADD COLUMN last_modified TEXT").run();
+  }
   db.query(`PRAGMA user_version = ${user_version}`).get();
 }
