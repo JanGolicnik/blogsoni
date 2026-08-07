@@ -1,22 +1,33 @@
 import pici from "./include/picijs/pici.js";
 import gss from "./include/gss/gss.js";
 import { db, init_db } from "./db.js";
-import { try_submit, poll_all, validate_feed } from "./feeds.js";
-import { fetch_favicon } from "./favicons.js";
+import { try_submit, poll_all } from "./feeds.js";
 
 function route_index(req) {
   const id = req.session?.id;
 
-  const filter = req.params.filter ?? "week";
-  const sites_only = filter === "sites";
-  const days = (filter === "all" || sites_only) ? null : filter === "month" ? -30 : -7;
+  const PER_PAGE = 50;
+  const page = req.params.page ?? 1;
+  const sites_only = req.params.sites ?? 0;
+  const new_only = req.params.new ?? 0;
 
-  const time_filter = days ? `AND date >= datetime('now', '${days} days')` : "";
-  const bookmark_filter = sites_only ? "AND is_bookmark = 1" : "";
+  const sites_filter = sites_only ? "AND is_bookmark = 1" : "";
+  const new_filter = new_only ? "AND visited = 0" : "";
 
-  const union = !sites_only
-    ? `
-    UNION ALL
+  const normal = `SELECT e.id, e.url, e.title, e.date as date,
+      e.author, e.tags, e.hn_url, e.lobste_url, f.id AS feed_id, f.title AS feed_title,
+      f.is_bookmark, 0 as is_fake,
+      f.favicon_color1 as favicon_color1, f.favicon_color2 as favicon_color2,
+      (SELECT COUNT(c.id) FROM comments c WHERE c.entry_id = e.id) AS n_comments,
+      (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.rating = 'like')    AS n_likes,
+      (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.rating = 'dislike') AS n_dislikes,
+      (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id)                          AS n_visits,
+      (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.user_id = ?)        AS visited,
+      (SELECT v.rating FROM visits v WHERE v.entry_id = e.id AND v.user_id = ?)        AS rating
+    FROM entries e
+    JOIN feeds f ON e.feed_id = f.id
+  `;
+  const bookmarks = `UNION ALL
     SELECT NULL, f.url, 'New feed: ' || COALESCE(f.title, f.url), f.added_at as date,
       NULL, NULL, NULL, NULL, NULL, NULL,
       0 as is_bookmark, 1 as is_fake,
@@ -26,35 +37,27 @@ function route_index(req) {
       0 AS visited, 0 AS my_rating
     FROM feeds f
     WHERE f.is_bookmark = 0
-  `
-    : "";
-
-  const sql = `
-      SELECT * FROM (
-        SELECT e.id, e.url, e.title, e.date as date,
-          e.author, e.tags, e.hn_url, e.lobste_url, f.id AS feed_id, f.title AS feed_title,
-          f.is_bookmark, 0 as is_fake,
-          f.favicon_color1 as favicon_color1, f.favicon_color2 as favicon_color2,
-          (SELECT COUNT(c.id) FROM comments c WHERE c.entry_id = e.id) AS n_comments,
-          (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.rating = 'like')    AS n_likes,
-          (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.rating = 'dislike') AS n_dislikes,
-          (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id)                          AS n_visits,
-          (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.user_id = ?)        AS visited,
-          (SELECT v.rating FROM visits v WHERE v.entry_id = e.id AND v.user_id = ?)        AS rating
-        FROM entries e
-        JOIN feeds f ON e.feed_id = f.id
-        ${union}
-      )
-      WHERE 1 ${time_filter} ${bookmark_filter}
-      ORDER BY date DESC
   `;
+
+  const sql = (sites_only || new_only ?
+    normal : `SELECT * FROM (${normal} ${bookmarks})`) +
+    `WHERE 1 ${sites_filter} ${new_filter}
+    ORDER BY date DESC
+    LIMIT ${PER_PAGE} OFFSET ${(page - 1) * PER_PAGE}
+    `;
+
+  const params = [];
+  if (sites_only) params.push("sites=1");
+  if (new_only) params.push("new=1");
 
   return server.render("index.html", {
     entries: db.query(sql).all(id, id),
     msg: req.flash,
-    filter,
     sites_only,
+    new_only,
     session: req.session,
+    page,
+    params: params.join('&')
   });
 }
 

@@ -1,12 +1,9 @@
 <script &&>
     return c.base({
         ...p,
-        header: c.header({
-            ...p,
-            extra: `${p.entries.length} ${p.sites_only ? "sites" : "posts"} `,
-        }),
+        header: c.header({...p, extra: `hi`}),
         aside: c.index_aside(p),
-        body: c.entries(p),
+        body: c.entries(p) + c.pagination(p),
         wide_main: true,
     });
 </script>

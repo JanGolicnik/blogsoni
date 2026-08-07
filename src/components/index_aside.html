@@ -1,6 +1,4 @@
-<a class="btn {{{p.filter === "week"  ? "active" : ""}}}" href="/">week</a>
-<a class="btn {{{p.filter === "month" ? "active" : ""}}}" href="/?filter=month">month</a>
-<a class="btn {{{p.filter === "all"   ? "active" : ""}}}" href="/?filter=all">all</a>
-<a class="btn {{{p.filter === "sites" ? "active" : ""}}}" href="/?filter=sites">sites</a>
+<a class="btn {{{p.sites_only ? "active" : ""}}}" href="/{{{p.sites_only ? '' : '?sites=1'}}}">sites</a>
+<a class="btn {{{p.new_only ? "active" : ""}}}"   href="/{{{p.new_only ? ''   : '?new=1'}}}">new</a>
 
 {{{ c.random_aside(p) }}}
