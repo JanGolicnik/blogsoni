@@ -1,6 +1,6 @@
 <script &&>
     return p.entries.length > 0
-        ? p.entries.map(c.entry_article).join("")
+        ? p.entries.map(e => c.entry_article({...e, page_url: p.page_url})).join("")
         : `
         <p>nothing to see yet ~</p>
         <p>maybe you should <a href="/submit">submit</a> something</p>

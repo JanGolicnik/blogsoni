@@ -1,3 +1,9 @@
-{{{p.page > 1 ? `<a href="/?page=${p.page - 1}&${p.params}">&lt;</a>` : ''}}}
-<p>{{{p.page}}}</p>
-<a href="/?page={{p.page - (-1)}}&{{p.params}}">&gt;</a>
+<aside id="pagination">
+    {{{
+    p.page > 1 ?
+    `<a href="/?page=${p.page - 1}&${p.params}">&lt; prev</a>` :
+    `<p class="muted">&lt; prev</p>`
+    }}}
+    <p>{{{p.page}}}</p>
+    <a href="/?page={{p.page - (-1)}}&{{p.params}}">next &gt;</a>
+</aside>

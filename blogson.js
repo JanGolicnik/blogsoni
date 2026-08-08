@@ -10,9 +10,12 @@ function route_index(req) {
   const page = req.params.page ?? 1;
   const sites_only = req.params.sites ?? 0;
   const new_only = req.params.new ?? 0;
+  const history_only = req.params.history ?? 0;
 
-  const sites_filter = sites_only ? "AND is_bookmark = 1" : "";
-  const new_filter = new_only ? "AND visited = 0" : "";
+  const filters = [];
+  if (sites_only) filters.push("AND is_bookmark = 1");
+  if (new_only) filters.push("AND visited = 0");
+  if (history_only) filters.push("AND visited = 1");
 
   const normal = `SELECT e.id, e.url, e.title, e.date as date,
       e.author, e.tags, e.hn_url, e.lobste_url, f.id AS feed_id, f.title AS feed_title,
@@ -39,25 +42,49 @@ function route_index(req) {
     WHERE f.is_bookmark = 0
   `;
 
-  const sql = (sites_only || new_only ?
-    normal : `SELECT * FROM (${normal} ${bookmarks})`) +
-    `WHERE 1 ${sites_filter} ${new_filter}
-    ORDER BY date DESC
-    LIMIT ${PER_PAGE} OFFSET ${(page - 1) * PER_PAGE}
-    `;
+  let entries = [];
+  if (history_only)
+  {
+    entries = db.query(`SELECT e.id, e.url, e.title, e.date as date,
+        e.author, e.tags, e.hn_url, e.lobste_url, f.id AS feed_id, f.title AS feed_title,
+        f.is_bookmark, 0 as is_fake,
+        f.favicon_color1 as favicon_color1, f.favicon_color2 as favicon_color2,
+        (SELECT COUNT(c.id) FROM comments c WHERE c.entry_id = e.id) AS n_comments,
+        (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.rating = 'like')    AS n_likes,
+        (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id AND v.rating = 'dislike') AS n_dislikes,
+        (SELECT COUNT(*) FROM visits v WHERE v.entry_id = e.id)                          AS n_visits,
+        0 AS visited,
+        v.rating AS rating
+      FROM visits v
+      INNER JOIN entries e ON e.id = v.entry_id
+      INNER JOIN feeds f ON f.id = e.feed_id
+      WHERE v.user_id = ?
+      ORDER BY v.created_at DESC`
+    ).all(id);
+  }
+  else
+  {
+    entries = db.query(
+      ((sites_only || new_only) ? normal : `SELECT * FROM (${normal} ${bookmarks})`) +
+      `WHERE 1 ${filters.join(" ")} ORDER BY date DESC LIMIT ${PER_PAGE} OFFSET ${(page - 1) * PER_PAGE}`
+    ).all(id, id);
+  }
 
   const params = [];
   if (sites_only) params.push("sites=1");
   if (new_only) params.push("new=1");
+  if (history_only) params.push("history=1");
 
   return server.render("index.html", {
-    entries: db.query(sql).all(id, id),
+    entries,
     msg: req.flash,
     sites_only,
     new_only,
+    history_only,
     session: req.session,
     page,
-    params: params.join('&')
+    params: params.join('&'),
+    page_url: req.url
   });
 }
 
@@ -386,7 +413,12 @@ function route_entry(req) {
   `,
     )
     .all(id);
-  return server.render("entry.html", { entry, comments, session: req.session });
+  return server.render("entry.html", {
+    entry,
+    comments,
+    session: req.session,
+    page_url: req.url
+  });
 }
 
 function route_entry_post(req) {
@@ -413,10 +445,12 @@ function hash_token(token) {
   return new Bun.CryptoHasher("sha256").update(token).digest();
 }
 
-function route_rate(req) {
+function route_rate_post(req) {
+  console.log(req.url);
   const rating = req.params.rating;
   const post_id = req.params.id;
   const user_id = req.session.id;
+  const ret = req.params.ret;
   if (!post_id) return pici.not_found();
   if (rating !== "dislike" && rating !== "like") return pici.not_found();
   const res = db
@@ -427,8 +461,8 @@ function route_rate(req) {
     )
     .run(rating, rating, post_id, user_id);
   return res.changes > 0
-    ? pici.redirect("/")
-    : pici.refresh("you have to read the post to rate it dummy", "/");
+    ? pici.redirect(ret)
+    : pici.refresh("you have to read the post to rate it dummy", ret);
 }
 
 const server = pici.create({
@@ -459,7 +493,7 @@ const server = pici.create({
     "/profile": [require_login, route_profile_post],
     "/profile_admin": [require_login, require_admin, route_profile_admin_post],
     "/entry": [require_login, route_entry_post],
-    "/rate": [require_login, route_rate],
+    "/rate": [require_login, route_rate_post],
   },
   add_session: (req, user) => {
     req._new_session_token = Buffer.from(
