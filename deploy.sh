@@ -2,4 +2,5 @@
 git pull
 git submodule sync --recursive
 git submodule update --init --recursive --force
-docker compose up -d
+docker compose up -d --build
+docker image prune -f
