@@ -83,6 +83,19 @@ function route_index(req) {
   if (new_only) params.push("new=1");
   if (history_only) params.push("history=1");
 
+  for (var entry of entries)
+  {
+    if (!entry.favicon_color1) continue;
+    console.log(entry);
+    const [h,s,v] = entry.favicon_color1.split(' ');
+    entry.background_color =
+      `background-color: oklch(${parseFloat(s) > 10 ? `30% 0.07 ${h}` :
+      `${parseFloat(v) * .4}% 0 0`});`;
+    entry.tag_color =
+      `color: oklch(${parseFloat(s) > 10 ? `70% 0.07 ${h}` :
+      `80% 0 0`});`;
+  }
+
   return server.render("index.html", {
     entries,
     msg: req.flash,

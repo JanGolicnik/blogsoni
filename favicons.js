@@ -64,10 +64,7 @@ async function get_top_color(buffer) {
     }
   }
 
-  if (!best) return null;
-  if (oklab_chroma(...best.rgb) < C_MIN) return null;
-
-  return best.rgb;
+  return best?.rgb;
 }
 
 export async function fetch_favicon(url) {

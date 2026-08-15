@@ -303,7 +303,7 @@ async function insert_feed(url, bookmark, user_id) {
   const feed_id = db.query("SELECT id FROM feeds WHERE url = ?").get(url).id;
 
   if (!bookmark) {
-    await poll_feed(feed_id, url, true);
+    await poll_feed(feed_id, url, null, true);
   } else {
     const q = `
       INSERT INTO entries (feed_id, url, title, date, tags)

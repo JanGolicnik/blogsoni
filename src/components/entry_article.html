@@ -2,17 +2,7 @@
     class="entry {{ p.visited ? "visited" : "" }}"
     data-feed="{{ p.feed_title || p.feed_url }}"
     data-domain="{{ p.url.split('/')[2] }}"
-    style="
-    <script &>
-    if (!p.favicon_color1) return '';
-    const [h,s,v] = p.favicon_color1.split(' ');
-    if (s < 2) return '';
-    return `
-        background-color: oklch(30% 0.07 ${h});
-    `;
-    </script>
-    "
->
+    style="{{p.background_color}}">
     <div class="entry-main">
         <div class="entry-title">
             <a
@@ -43,7 +33,7 @@
     </div>
 
     <div class="entry-info muted">
-        {{{ !p.is_fake ? `<span class="feed-tag" style="color: oklch(70% 0.3 ${p.favicon_color1?.split(' ')[0] ?? '0'})">
+        {{{ !p.is_fake ? `<span class="feed-tag" style="${p.tag_color}">
             ${ p.is_bookmark ? "site" : escape((p.feed_title || p.feed_url ||
             '').slice(0, 20)) } </span
         >` : '' }}}
