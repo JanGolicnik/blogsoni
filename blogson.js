@@ -30,17 +30,6 @@ function route_index(req) {
     FROM entries e
     JOIN feeds f ON e.feed_id = f.id
   `;
-  const bookmarks = `UNION ALL
-    SELECT NULL, f.url, 'New feed: ' || COALESCE(f.title, f.url), f.added_at as date,
-      NULL, NULL, NULL, NULL, NULL, NULL,
-      0 as is_bookmark, 1 as is_fake,
-      0 as favicon_color1, 0 as favicon_color2,
-      0 as n_comments,
-      0 AS n_likes, 0 AS n_dislikes, 0 AS n_visits,
-      0 AS visited, 0 AS my_rating
-    FROM feeds f
-    WHERE f.is_bookmark = 0
-  `;
 
   let entries = [];
   if (history_only)
@@ -62,12 +51,31 @@ function route_index(req) {
       ORDER BY v.created_at DESC`
     ).all(id);
   }
+  else if (sites_only || new_only)
+  {
+    entries = db.query(`
+      ${normal}
+      WHERE 1 ${filters.join(" ")} ORDER BY date DESC LIMIT ${PER_PAGE} OFFSET ${(page - 1) * PER_PAGE}
+    `).all(id, id);
+  }
   else
   {
-    entries = db.query(
-      ((sites_only || new_only) ? normal : `SELECT * FROM (${normal} ${bookmarks})`) +
-      `WHERE 1 ${filters.join(" ")} ORDER BY date DESC LIMIT ${PER_PAGE} OFFSET ${(page - 1) * PER_PAGE}`
-    ).all(id, id);
+    entries = db.query(`
+      SELECT * FROM (
+          ${normal}
+          UNION ALL
+          SELECT NULL, f.url, 'New feed: ' || COALESCE(f.title, f.url), f.added_at as date,
+            NULL, NULL, NULL, NULL, NULL, NULL,
+            0 as is_bookmark, 1 as is_fake,
+            0 as favicon_color1, 0 as favicon_color2,
+            0 as n_comments,
+            0 AS n_likes, 0 AS n_dislikes, 0 AS n_visits,
+            (f.added_by = ?) AS visited, 0 AS my_rating
+          FROM feeds f
+          WHERE f.is_bookmark = 0
+      )
+      WHERE 1 ${filters.join(" ")} ORDER BY date DESC LIMIT ${PER_PAGE} OFFSET ${(page - 1) * PER_PAGE}
+    `).all(id, id, id);
   }
 
   const params = [];
@@ -526,4 +534,6 @@ init_db(process.env.DATABASE ?? "links.db");
 setInterval(poll_all, 3 * 60 * 60 * 1000);
 // poll_all();
 
-server.start(5001);
+console.log(await Bun.password.hash("123"));
+
+// server.start(5001);
