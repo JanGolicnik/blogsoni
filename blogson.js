@@ -454,23 +454,20 @@ function hash_token(token) {
 }
 
 function route_rate_post(req) {
-  console.log(req.url);
   const rating = req.params.rating;
   const post_id = req.params.id;
   const user_id = req.session.id;
-  const ret = req.params.ret;
   if (!post_id) return pici.not_found();
   if (rating !== "dislike" && rating !== "like") return pici.not_found();
-  const res = db
-    .query(
-      `
-      UPDATE visits SET rating = CASE WHEN rating = ? THEN NULL ELSE ? END
-      WHERE entry_id = ? AND user_id = ?`,
-    )
-    .run(rating, rating, post_id, user_id);
+  const res = db.query(`
+    INSERT INTO visits (user_id, entry_id, rating) VALUES (?, ?, ?)
+    ON CONFLICT(user_id, entry_id) DO UPDATE SET
+      rating = CASE WHEN rating = excluded.rating THEN NULL ELSE excluded.rating END
+  `).run(user_id, post_id, rating);
+  const ret = req.params.ret;
   return res.changes > 0
     ? pici.redirect(ret)
-    : pici.refresh("you have to read the post to rate it dummy", ret);
+    : pici.refresh("uh idk smth went wrong", ret);
 }
 
 const server = pici.create({
@@ -534,6 +531,4 @@ init_db(process.env.DATABASE ?? "links.db");
 setInterval(poll_all, 3 * 60 * 60 * 1000);
 // poll_all();
 
-console.log(await Bun.password.hash("123"));
-
-// server.start(5001);
+server.start(5001);
