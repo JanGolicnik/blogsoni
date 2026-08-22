@@ -125,5 +125,28 @@ export function init_db(path) {
     user_version++;
     db.query("ALTER TABLE feeds ADD COLUMN last_modified TEXT").run();
   }
+  if (user_version <= 7) {
+    user_version++;
+    db.query(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
+        title, tags,
+        tokenize="unicode61 remove_diacritics 2 tokenchars '+#'"
+      );
+
+      CREATE TRIGGER IF NOT EXISTS entries_ai AFTER INSERT ON entries BEGIN
+        INSERT INTO entries_fts(rowid, title, tags) VALUES (new.id, new.title, new.tags);
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS entries_ad AFTER DELETE ON entries BEGIN
+        DELETE FROM entries_fts WHERE rowid = old.id;
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS entries_au AFTER UPDATE ON entries BEGIN
+        DELETE FROM entries_fts WHERE rowid = old.id;
+        INSERT INTO entries_fts(rowid, title, tags, feed_url) VALUES (new.id, new.title, new.tags);
+      END;
+    `).run();
+    db.query(`INSERT INTO entries_fts(rowid, title, tags) SELECT id, title, tags FROM entries e`).run();
+  }
   db.query(`PRAGMA user_version = ${user_version}`).get();
 }

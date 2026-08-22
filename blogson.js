@@ -11,11 +11,20 @@ function route_index(req) {
   const sites_only = req.params.sites ?? 0;
   const new_only = req.params.new ?? 0;
   const history_only = req.params.history ?? 0;
+  let query = req.params.query ?? null;
 
+  const args = [id, id];
   const filters = [];
   if (sites_only) filters.push("AND is_bookmark = 1");
   if (new_only) filters.push("AND visited = 0");
   if (history_only) filters.push("AND visited = 1");
+  if (query) {
+    query = query.trim().split(/\s+/).filter(Boolean).map(w => `"${w.replaceAll('"', '""')}"*`).join(' ');
+    if (query.length > 0) {
+      filters.push(`AND id IN (SELECT rowid FROM entries_fts WHERE entries_fts MATCH ?)`);
+      args.push(query);
+    }
+  }
 
   const normal = `SELECT e.id, e.url, e.title, e.date as date,
       e.author, e.tags, e.hn_url, e.lobste_url, f.id AS feed_id, f.title AS feed_title,
@@ -56,7 +65,7 @@ function route_index(req) {
     entries = db.query(`
       ${normal}
       WHERE 1 ${filters.join(" ")} ORDER BY date DESC LIMIT ${PER_PAGE} OFFSET ${(page - 1) * PER_PAGE}
-    `).all(id, id);
+    `).all(...args);
   }
   else
   {
@@ -74,8 +83,10 @@ function route_index(req) {
           FROM feeds f
           WHERE f.is_bookmark = 0
       )
-      WHERE 1 ${filters.join(" ")} ORDER BY date DESC LIMIT ${PER_PAGE} OFFSET ${(page - 1) * PER_PAGE}
-    `).all(id, id, id);
+      WHERE 1 ${filters.join(" ")}
+      ORDER BY date DESC
+      LIMIT ${PER_PAGE} OFFSET ${(page - 1) * PER_PAGE}
+    `).all(id, ...args);
   }
 
   const params = [];
@@ -86,7 +97,6 @@ function route_index(req) {
   for (var entry of entries)
   {
     if (!entry.favicon_color1) continue;
-    console.log(entry);
     const [h,s,v] = entry.favicon_color1.split(' ');
     entry.background_color =
       `background-color: oklch(${parseFloat(s) > 10 ? `30% 0.07 ${h}` :

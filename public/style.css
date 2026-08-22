@@ -162,6 +162,7 @@ aside.options {
     display: flex;
     flex-direction: row;
     height: fit-content;
+    font-size: var(--font-normalsmall);
 }
 
 .entry {
@@ -337,6 +338,15 @@ form.inline {
     display: inline;
     margin: 0;
     padding: 0;
+    width: 100%;
+    min-width: 5em;
+    display: flex;
+    flex-direction: row;
+    gap: 0.5em;
+}
+
+form.inline input {
+    min-width: 0;
 }
 
 form.inline button {
@@ -348,6 +358,7 @@ form.inline button {
     font: inherit;
     cursor: pointer;
     vertical-align: baseline;
+    color: var(--text);
 }
 
 a.btn,

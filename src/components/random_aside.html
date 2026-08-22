@@ -1,4 +1,6 @@
-<div class="margin-left">
-    <a href="/random" class="btn" rel="noopener">random</a>
-    {{{ p.session ? `<a href="/submit" class="btn">submit</a>` : '' }}}
-</div>
+<form action="/" method="get" class="inline">
+    <input type="text" name="query"/>
+    <button type="submit">search</button>
+</form>
+<a href="/random" class="btn" rel="noopener">random</a>
+{{{ p.session ? `<a href="/submit" class="btn">submit</a>` : '' }}}
