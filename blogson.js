@@ -11,7 +11,7 @@ function route_index(req) {
   const sites_only = req.params.sites ?? 0;
   const new_only = req.params.new ?? 0;
   const history_only = req.params.history ?? 0;
-  let query = req.params.query ?? null;
+  const query = req.params.query ?? null;
 
   const args = [id, id];
   const filters = [];
@@ -19,10 +19,10 @@ function route_index(req) {
   if (new_only) filters.push("AND visited = 0");
   if (history_only) filters.push("AND visited = 1");
   if (query) {
-    query = query.trim().split(/\s+/).filter(Boolean).map(w => `"${w.replaceAll('"', '""')}"*`).join(' ');
-    if (query.length > 0) {
+    let s = query.trim().split(/\s+/).filter(Boolean).map(w => `"${w.replaceAll('"', '""')}"*`).join(' ');
+    if (s.length > 0) {
       filters.push(`AND id IN (SELECT rowid FROM entries_fts WHERE entries_fts MATCH ?)`);
-      args.push(query);
+      args.push(s);
     }
   }
 
@@ -93,6 +93,7 @@ function route_index(req) {
   if (sites_only) params.push("sites=1");
   if (new_only) params.push("new=1");
   if (history_only) params.push("history=1");
+  if (query) params.push(`query=${query}`);
 
   for (var entry of entries)
   {
