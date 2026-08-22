@@ -338,6 +338,9 @@ form.inline {
     display: inline;
     margin: 0;
     padding: 0;
+}
+
+.options form.inline {
     width: 100%;
     min-width: 5em;
     display: flex;

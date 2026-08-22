@@ -16,8 +16,8 @@
                     alt=""
                     loading="lazy"
                 />` : '' }}}
-                {{ p.is_bookmark ? "Site showcase: " : "" }} {{ (p.title &&
-                p.title.trim()) ? p.title : p.url.split('/')[2] }}
+                {{ p.is_bookmark ? "Site showcase: " : "" }}
+                {{ (p.title && p.title.trim()) ? p.title : p.url.split('/')[2] }}
             </a>
         </div>
         {{{
